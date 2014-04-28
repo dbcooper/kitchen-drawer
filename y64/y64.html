@@ -1,0 +1,94 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Online Y64 encoder and decoder</title>
+
+<style type="text/css" media="screen">
+    label {
+        font-weight: bold;
+    }
+    #buttonses {
+        text-align: center;
+    }
+    .error { color: red; }
+    #messages {
+        border:  1px solid #ccc;
+        min-height: 40px;
+        padding: 0 5px;
+    }
+
+</style>
+
+  <!-- http://yuilibrary.com/yui/quick-start/ -->
+  <script src="http://yui.yahooapis.com/3.16.0/build/yui/yui-min.js"></script>
+  <script type="text/javascript">
+
+// TODO  Hook exchange to submit button via event after page loads
+
+function exchange()
+{
+    <!-- http://yuilibrary.com/gallery/show/y64 -->
+    YUI().use('node','gallery-y64', function(Y) {
+        var clear_ta    = Y.one('#clear');
+        var encode_ta   = Y.one('#encoded');
+        var msg         = Y.one('#messages');
+        var html        = '';           // html message(s)
+
+        var cleartext = clear_ta.get("value");
+        var encoded = encode_ta.get("value");
+        if (cleartext.length > 0 && encoded.length <= 0) {
+            var encodedText = Y.Y64.encode(cleartext);
+            encode_ta.set("value", encodedText);
+        }
+        else if (cleartext.length <= 0 && encoded.length > 0) {
+            var decodedText = Y.Y64.decode(encoded);
+            clear_ta.set("value", decodedText);
+        }
+        else if (cleartext.length > 0 && encoded.length > 0) {
+            html += '<p class="error">Please clear the intended destination text area before trying to convert.</p>';
+        }
+        else {
+            html += '<p>No input.</p>';
+        }
+
+        msg.setHTML(html);
+    });
+
+}
+
+</script>
+
+</head>
+<body>
+  <h1>Online Y64 encoder and decoder</h1>
+
+  <form action="decoder" method="get" accept-charset="utf-8">
+    <table border="0">
+      <tr><th>
+          <label for="clear">Cleartext</label>
+          </th><td>
+          <textarea id="clear" name="Input" rows="8" cols="60"></textarea>
+        </td>
+
+      </tr>
+      <tr><th>
+          <label for="encoded">Y64 Encoded</label>
+          </th> <td>
+          <textarea id="encoded" name="Output" rows="8" cols="60"></textarea>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2" id="buttonses">
+          <input type="button" onclick="exchange();" value="Encode / Decode">
+          <input type="reset" value="Clear">
+        </td>
+      </tr>
+    </table>
+  </form>
+
+  <div id="messages">
+  </div>
+
+</body>
+</html>
