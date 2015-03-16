@@ -1,0 +1,57 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Getopt::Std;
+
+our %opts;
+getopts('s:', \%opts);
+
+my ($min, $max) = (1, 25);              # range of shift
+
+if ($opts{s}) {
+    my $range = $opts{s};
+    if (  my ($single) = ($range =~ m/^(\d+)$/)  ) {
+        $min = $max = $single;
+    }
+    elsif (  ($min, $max) = ($range =~ m/^(\d+)[,-](\d+)$/)  ) {
+        if ($min > $max) {
+            my $tmp = $min;
+            $min = $max;
+            $max = $tmp;
+        }
+    }
+    else {
+        die "?don't know how to process range $range\n";
+    }
+}
+
+while (<>) {
+    chomp();
+    tr/A-Z/a-z/;
+    print "Original Message: $_\n";
+    my $len = length();
+    my @ascii_val = unpack("C$len", $_);
+    for (my $i = $min; $i <= $max; $i++) {
+        my $cipher = caesar($i, @ascii_val);
+        print "(Shift=$i) Cipher=$cipher\n";
+    }
+}
+
+
+sub caesar
+{
+    my ($step, @val) = @_;
+    my @lcopy;
+
+    foreach my $v (@val) {
+        if ($v >= 97 && $v <= 122) {
+            $v = (($v - 97)+$step)%26 + 97;
+        }
+        push(@lcopy, $v);
+    }
+    my $trans = pack("C".($#lcopy+1), @lcopy);
+    return $trans;
+}
+
