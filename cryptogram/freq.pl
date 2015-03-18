@@ -4,13 +4,13 @@ use strict;
 use warnings;
 
 # freq.pl  Frequency analysis tool
-# Author: Niall Durham, niall.durham@gmail.com
-# Last modified: 09 June 2005
 
 use Getopt::Std;
+use Text::Graph;
+use Text::Graph::DataSet;
 
 our %opts;
-getopts('acl:msw:', \%opts);
+getopts('acgl:msw:', \%opts);
 
 my $msg;
 # Slurp in input
@@ -54,16 +54,26 @@ if ($opts{m}) {
         print "$k: " . uc($k) . "\n";
     }
 } else {
+    my $value_lref = [ ];
+    my $label_lref = [ ];
     foreach my $k (@keylist) {
         my $freq = $fa{$k};
         my $pct = $freq/$total * 100;
         if ($fa{$k} >= $limit) {
-            if ($opts{c}) {               # CSV output
+            if ($opts{c}) {             # CSV output
                 print "\"$k\",$pct\n";
+            } elsif ($opts{g}) {        # prepare graph output
+                push @{$label_lref}, $k;
+                push @{$value_lref}, $freq;
             } else {
                 printf("$k: %${maxlen}d (%8.4f%%)\n", $freq, $pct);
             }
         }
+    }
+    if ($opts{g}) {                     # output graph
+        my $dataset = Text::Graph::DataSet->new($value_lref, $label_lref);
+        my $graph = Text::Graph->new( 'Line', showval => 1, fill => '*' );
+        print $graph->to_string($dataset);
     }
 }
 
