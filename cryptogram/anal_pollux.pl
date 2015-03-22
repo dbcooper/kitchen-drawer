@@ -82,16 +82,16 @@ my %t2b;
 for my $set (@dist_order) {
     my $between = $max_dist->{$set} - 1;
     last if $between > $MAX_BETWEEN;
-    my $set = join ' ', split //, $set;
+    my $s = join ' ', split //, $set;
     if ($between <= 0) {
-        warn "?throwing out $set because it did not appear in ciphertext\n";
+        warn "?throwing out $s because it did not appear in ciphertext\n";
         next;
     }
     if ( my ($sequence) = ( $cipher =~ m/([$set]{3,})/ ) ) {
-        warn "?throwing out $set due to repeated sequence $sequence\n";
+        warn "?throwing out $s due to repeated sequence $sequence\n";
         next;
     }
-    $t2b{$set} = $between;
+    $t2b{$s} = $between;
 }
 
 print <<EOL
