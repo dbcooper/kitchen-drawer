@@ -8,26 +8,28 @@ use v5.10;
 
 use Algorithm::Combinatorics qw(combinations_with_repetition);
 use Data::Dumper;
+use Getopt::Std;
 
 # The maximum number of [cipher] digits between dividers is 4 for
 # alphabetical, 5 for alphanumeric and 6 w/ punctuation symbols.
-my $MAX_BETWEEN = 5;
+my $MAX_BETWEEN = 4;
 
+my $SET_SIZE    = 3;                    # size of divider set {3,4}
+
+our %opts;
+getopts('b:s:', \%opts);                # -b between, -s set_size
+$MAX_BETWEEN = $opts{b} if (exists $opts{b});
+$SET_SIZE    = $opts{s} if (exists $opts{s});
 
 my @set = qw( 0 1 2 3 4 5 6 7 8 9 );
-# TODO  Remove elements from set (first and last digit aren't dividers?)
-my @combinations = combinations_with_repetition(\@set, 3);
-
-# A digit repeated three times is not a valid divider
-my @invalid = qw(000 111 222 333 444 555 666 777 888 999);
+my @combinations = combinations_with_repetition(\@set, $SET_SIZE);
 
 my $num2comb = { };     # map digit to all possible (unique) combinations that contain that digit
-my $last_pos = { };     # last pos() for any digit in triplet
-my $max_dist = { };     # maximum distance between any pair of digits in triplet
+my $last_pos = { };     # last pos() for any digit in divider set
+my $max_dist = { };     # maximum distance between any pair of digits in divider set
 
 for my $lref (@combinations) {
     my $combo = join '', sort @{$lref};
-    # TODO  Throw out anything in @invalid?
     $last_pos->{$combo} = -1;
     $max_dist->{$combo}  = 0;
     # Since combinations can have repeated digits, use a hash to track occurance
@@ -41,7 +43,7 @@ for my $k (keys %{$num2comb}) {
     $num2comb->{$k} = [ @combos ];
 }
 
-# Track maximum distance between the occurance of any digit w/in a triplet
+# Track maximum distance between the occurance of any digit w/in a divider set
 my $pos = 0;                            # number of digits processed
 my $cipher = '';                        # ciphertext message
 while (<>) {
@@ -51,14 +53,14 @@ while (<>) {
     die "?invalid characters in $_\n" if m/[^0-9]+/;
     $cipher .= $_;
     for my $d (split //) {
-        # Update stats for all triplets containing digit $d
-        for my $trip ( @{$num2comb->{$d}} ) {
-            my $last = $last_pos->{$trip};
+        # Update stats for all divider sets containing digit $d
+        for my $set ( @{$num2comb->{$d}} ) {
+            my $last = $last_pos->{$set};
             unless ($last == -1) {
                 my $dist = $pos - $last;
-                $max_dist->{$trip} = $dist if ($max_dist->{$trip} < $dist) ;
+                $max_dist->{$set} = $dist if ($max_dist->{$set} < $dist) ;
             }
-            $last_pos->{$trip} = $pos;
+            $last_pos->{$set} = $pos;
         }
         $pos++;
     }
@@ -77,15 +79,15 @@ while (<>) {
 my @dist_order = sort { $max_dist->{$a} <=> $max_dist->{$b}; } keys %{$max_dist};
 
 my %t2b;
-for my $trip (@dist_order) {
-    my $between = $max_dist->{$trip} - 1;
+for my $set (@dist_order) {
+    my $between = $max_dist->{$set} - 1;
     last if $between > $MAX_BETWEEN;
-    my $set = join ' ', split //, $trip;
+    my $set = join ' ', split //, $set;
     if ($between <= 0) {
         warn "?throwing out $set because it did not appear in ciphertext\n";
         next;
     }
-    if ( my ($sequence) = ( $cipher =~ m/([$trip]{3,})/ ) ) {
+    if ( my ($sequence) = ( $cipher =~ m/([$set]{3,})/ ) ) {
         warn "?throwing out $set due to repeated sequence $sequence\n";
         next;
     }
@@ -94,13 +96,15 @@ for my $trip (@dist_order) {
 
 print <<EOL
 
-Based on a maximum of $MAX_BETWEEN digits between each divider, here are valid triplets of dividers:
+Based on a maximum of $MAX_BETWEEN digits between each divider set ($SET_SIZE elements),
+here are valid divider sets:
 
-            Digits
-Triplet     Between
--------     -------
+  Divider       Digits
+  Set           Between
+-----------     -------
 EOL
     ;
 for my $k (sort keys %t2b) {
-    printf " %s       $t2b{$k}\n", $k;
+    printf " %-10s        $t2b{$k}\n", $k;
 }
+
