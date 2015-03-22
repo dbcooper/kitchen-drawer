@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Build wordlist from Internet
+# ./mkwordlist > words.txt
+
+INPUT_WORDLIST=_raw_wordlist.txt
+
+if [ ! -r $INPUT_WORDLIST ]
+then
+    echo "?can't find $INPUT_WORDLIST, downloading"
+    /usr/bin/curl -L -o $INPUT_WORDLIST http://pastebin.com/raw.php?i=MCVtebd4
+fi
+
+# Filter wordlist, remove all punctuation, lowercase output
+/bin/grep -v -e '^\s*#' $INPUT_WORDLIST | /bin/sed "s/[^a-zA-Z]\+//g;" | tr A-Z a-z | sort -u
+
