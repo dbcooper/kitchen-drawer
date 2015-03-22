@@ -7,7 +7,7 @@ INPUT_WORDLIST=_raw_wordlist.txt
 
 if [ ! -r $INPUT_WORDLIST ]
 then
-    echo "?can't find $INPUT_WORDLIST, downloading"
+    echo "?can't find $INPUT_WORDLIST, downloading" 1>&2
     /usr/bin/curl -L -o $INPUT_WORDLIST http://pastebin.com/raw.php?i=MCVtebd4
 fi
 
