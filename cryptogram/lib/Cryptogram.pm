@@ -33,6 +33,20 @@ sub _dictionary_init
     return $trie;
 }
 
+# Returns average word length given string of "spaced" words
+sub avg_word_length
+{
+    my ($input) = @_;
+
+    my ($sum, $count) = (0, 0);
+    for my $w (split /\s+/, $input) {
+        $sum += length($w);
+        $count++;
+    }
+    return sprintf "%.3f", $sum/$count;
+}
+
+
 # Separate words in $input, returns altered version
 sub separate_words
 {
