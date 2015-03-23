@@ -12,5 +12,5 @@ then
 fi
 
 # Filter wordlist, remove all punctuation, lowercase output
-/bin/grep -v -e '^\s*#' $INPUT_WORDLIST | /bin/sed "s/[^a-zA-Z]\+//g;" | tr A-Z a-z | sort -u
+/bin/grep -v -e '^\s*#' $INPUT_WORDLIST | /bin/sed "s/[^a-zA-Z]\+//g;" | /usr/bin/tr A-Z a-z | /bin/sort -u
 
