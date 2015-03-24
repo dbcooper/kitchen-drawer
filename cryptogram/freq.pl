@@ -23,7 +23,7 @@ my $msg;
 $msg = uc($msg);
 $msg =~ s/\s+//g;
 $msg =~ s/\W//g if ($opts{a});            # alphanumeric only
-print "Message is ", length($msg), " characters\n";
+print "# Message is ", length($msg), " characters long\n";
 
 my $width = ($opts{w}) ? $opts{w} : 1;
 my $limit = ($opts{l}) ? $opts{l} : 1;
