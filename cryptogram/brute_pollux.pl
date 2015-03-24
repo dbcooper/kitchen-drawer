@@ -22,7 +22,7 @@ Cryptogram::_dictionary_init($dictionary);
 our %opts;
 getopts('d:', \%opts);
 
-die "Usage: $0 -d <dividers> <cipher_file>\n" unless $opts{d};
+usage() unless ( $opts{d} or $opts{b} );
 
 $opts{d} =~ s/[^0-9]+//g;               # only single digits, no separator necessary
 my @dividers = split //, $opts{d};
@@ -145,4 +145,14 @@ sub set_difference {
         push @result, $a;
     }
     return @result;
+}
+
+sub usage
+{
+    warn <<EOL
+Usage:  $0 -d <dividers> <cipher_file>
+        $0 -b <number_dividers> <cipher_file>
+EOL
+    ;
+    exit 0;
 }
