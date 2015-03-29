@@ -18,23 +18,13 @@ use Cryptogram;
 my $dictionary = "$FindBin::Bin/etc/words.txt";
 Cryptogram::_dictionary_init($dictionary);
 
+# Global variables
+my $morse = new Text::Morse;
+
 
 our %opts;
-getopts('d:', \%opts);
-
+getopts('a:b:d:', \%opts);  # -a minimum_awl, -b num_dividers, -d dividers
 usage() unless ( $opts{d} or $opts{b} );
-
-$opts{d} =~ s/[^0-9]+//g;               # only single digits, no separator necessary
-my @dividers = split //, $opts{d};
-warn "?dividers = { " . join(' ', @dividers) . " }\n";
-
-# Dit and dah set sizes depend on dividers count:
-# 4 dividers » sets of (3, 3), 3 dividers » sets of (3, 4)
-
-my @universe = (0..9);
-my @remaining = set_difference(\@universe, \@dividers);
-
-my $morse = new Text::Morse;
 
 my $cipher = '';
 while (<>) {
@@ -47,34 +37,88 @@ warn "?cipher is $cipher\n";
 
 die "?invalid characters in ciphertext [^0-9]" if ($cipher =~ m/[^0-9]/);
 
-# ¿ Is alternation (dit and dah) unnecessary if there are 4 elements in the divider set ?!
-my @ss = subsets(\@remaining, 3);
-for my $lref (@ss) {
-    my @diff = set_difference(\@remaining, $lref);
+my @dividers_ss;                        # dividers subsets
+my @universe = (0..9);
+# if opts{b}, generate subsets of universe w/ size $opts{b} else, one
+# subset, consisting of @dividers
+if ($opts{b}) {
+    die "?invalid number of dividers ($opts{b}), should be [3,4]" if ($opts{b} < 3 or $opts{b} > 4);
+    @dividers_ss = subsets(\@universe, $opts{b});
+}
+else {
+    $opts{d} =~ s/[^0-9]+//g;           # only single digits, no separator necessary
+    my @dividers = split //, $opts{d};
+    my $count = scalar @dividers;
+    die "?invalid number of dividers ($count), should be [3,4]" if ($count < 3 or $count > 4);
+    @dividers_ss = ( [ @dividers ] );
+}
 
-    # Process current subset as dit (dot)
-    my $solution = { };
-    $solution->{' '}    = \@dividers;
-    $solution->{'.'}    = $lref;        # dit
-    $solution->{'-'}    = \@diff;       # dah, escaped for tr///
-    if (solve($cipher, $solution)) {
-        print "# $solution->{key_pp}\n";
-        print "# awl=$solution->{awl}\n";
-        print "$solution->{clear}\n";
-    }
+# Loop over sets of dividers, further partitioning the remaining
+# numbers to brute force ciphertext
+for my $dref (@dividers_ss) {
+    my @divs = @{$dref};
+    my @solutions = brute_dit_dah(@divs);
 
-    # Process current subset as dah (dash)
-    $solution = { };
-    $solution->{' '}    = \@dividers;
-    $solution->{'.'}    = \@diff;       # dit
-    $solution->{'-'}    = $lref;        # dah
-    if (solve($cipher, $solution)) {
-        print "# $solution->{key_pp}\n";
-        print "# awl=$solution->{awl}\n";
-        print "$solution->{clear}\n";
+    for my $href (@solutions) {
+        next if ($opts{a} and $href->{awl} < $opts{a});
+        print "# $href->{key_pp}\n";
+        print "# awl=$href->{awl}\n";
+        print "$href->{clear}\n";
     }
 }
 
+
+# Brute force dit and dah given a set of dividers.  Returns list of
+# hash references (solution information)
+sub brute_dit_dah {
+    my (@divs) = @_;
+    my @solutions;                      # set of potentially valid solutions
+
+    # Dit and dah set sizes depend on dividers count:
+    # 4 dividers » sets of (3, 3), 3 dividers » sets of (3, 4)
+    my $subset_size = 3;
+    $subset_size = 4 if (scalar(@divs) == 3) ;
+
+    my @remaining = set_difference(\@universe, \@divs);
+    my @ss = subsets(\@remaining, $subset_size);
+
+    # ¿ Is alternation (dit and dah) unnecessary if there are 4 elements in the divider set ?!
+    my %seen_ss;                        # track seen subsets
+SUBSET:
+    for my $lref (@ss) {
+        my @diff = set_difference(\@remaining, $lref);
+        my $key = join ' ', @{$lref};
+        if ( $seen_ss{$key} ) {
+            warn "?already seen subset $key, skipping\n";
+        }
+        $seen_ss{$key}++;
+
+        # Process current subset as dit (dot)
+        my $solution = build_solution(\@divs, $lref, \@diff);
+        if (solve($cipher, $solution)) {
+            push @solutions, $solution;
+        }
+
+        # Process current subset as dah (dash)
+        $solution = build_solution(\@divs, \@diff, $lref);
+        if (solve($cipher, $solution)) {
+            push @solutions, $solution;
+        }
+    }
+    return @solutions;
+}
+
+
+sub build_solution
+{
+    my ($div_lref, $dit_lref, $dah_lref) = @_;
+
+    my $solution = { };
+    $solution->{' '}    = $div_lref;
+    $solution->{'.'}    = $dit_lref;    # dit
+    $solution->{'-'}    = $dah_lref;    # dah
+    return $solution;
+}
 
 # Decode pollux cipher using single map/translation table
 sub solve
@@ -150,8 +194,8 @@ sub set_difference {
 sub usage
 {
     warn <<EOL
-Usage:  $0 -d <dividers> <cipher_file>
-        $0 -b <number_dividers> <cipher_file>
+Usage:  $0 [-a <awl>] -d <dividers> <cipher_file>
+        $0 [-a <awl>] -b <number_dividers> <cipher_file>
 EOL
     ;
     exit 0;
