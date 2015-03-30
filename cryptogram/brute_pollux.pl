@@ -23,7 +23,7 @@ my $morse = new Text::Morse;
 
 
 our %opts;
-getopts('a:b:d:', \%opts);  # -a minimum_awl, -b num_dividers, -d dividers
+getopts('Aa:b:d:S', \%opts);  # -A alphanumeric only, -a minimum_awl, -b num_dividers, -d dividers, -S no (morse code) space
 usage() unless ( $opts{d} or $opts{b} );
 
 my $cipher = '';
@@ -57,10 +57,12 @@ else {
 # numbers to brute force ciphertext
 for my $dref (@dividers_ss) {
     my @divs = @{$dref};
-    my @solutions = brute_dit_dah(@divs);
 
+    my @solutions = brute_dit_dah(@divs);
     for my $href (@solutions) {
         next if ($opts{a} and $href->{awl} < $opts{a});
+        next if ( $opts{S} and $href->{clear} =~ m/\s/ );
+        next if ( $opts{A} and $href->{clear} =~ m/[^a-zA-Z0-9]/ );
         print "# $href->{key_pp}\n";
         print "# awl=$href->{awl}\n";
         print "$href->{clear}\n";
@@ -83,25 +85,19 @@ sub brute_dit_dah {
     my @ss = subsets(\@remaining, $subset_size);
 
     # ¿ Is alternation (dit and dah) unnecessary if there are 4 elements in the divider set ?!
-    my %seen_ss;                        # track seen subsets
 SUBSET:
     for my $lref (@ss) {
         my @diff = set_difference(\@remaining, $lref);
-        my $key = join ' ', @{$lref};
-        if ( $seen_ss{$key} ) {
-            warn "?already seen subset $key, skipping\n";
-        }
-        $seen_ss{$key}++;
 
         # Process current subset as dit (dot)
         my $solution = build_solution(\@divs, $lref, \@diff);
-        if (solve($cipher, $solution)) {
+        if ($solution and solve($cipher, $solution)) {
             push @solutions, $solution;
         }
 
         # Process current subset as dah (dash)
         $solution = build_solution(\@divs, \@diff, $lref);
-        if (solve($cipher, $solution)) {
+        if ($solution and solve($cipher, $solution)) {
             push @solutions, $solution;
         }
     }
@@ -109,9 +105,15 @@ SUBSET:
 }
 
 
+my %seen_solutions;                     # track what we've already solved
 sub build_solution
 {
     my ($div_lref, $dit_lref, $dah_lref) = @_;
+
+    # Don't duplicate effort
+    my $key = join( ';', map { join '', @{$_} } $div_lref, $dit_lref, $dah_lref );
+    return if ($seen_solutions{$key});
+    $seen_solutions{$key}++;
 
     my $solution = { };
     $solution->{' '}    = $div_lref;
@@ -134,8 +136,9 @@ sub solve
     return if ($clear =~ m/scrambled/); # invalid morse code sequence
 
     # Space string
+    $href->{clear} = $clear;
     my $spaced = Cryptogram::separate_words($clear);
-    $href->{clear} = $spaced;
+    $href->{spaced} = $spaced;
     $href->{awl} = Cryptogram::avg_word_length($spaced);
 
     # Generate human-readable (pretty print) decoder key
